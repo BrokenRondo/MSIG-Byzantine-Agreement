@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"math/big"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common/math"
@@ -58,9 +57,9 @@ func (d *diffTest) UnmarshalJSON(b []byte) (err error) {
 }
 
 func TestCalcDifficulty(t *testing.T) {
-	file, err := os.Open(filepath.Join("..", "..", "tests", "testdata", "BasicTests", "difficulty.json"))
+	file, err := os.Open("../../tests/files/BasicTests/difficulty.json")
 	if err != nil {
-		t.Skip(err)
+		t.Fatal(err)
 	}
 	defer file.Close()
 

@@ -29,6 +29,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/consensus"
+	"github.com/ethereum/go-ethereum/consensus/bft"
 	"github.com/ethereum/go-ethereum/consensus/clique"
 	"github.com/ethereum/go-ethereum/consensus/ethash"
 	"github.com/ethereum/go-ethereum/core"
@@ -59,10 +60,11 @@ type LesServer interface {
 type Ethereum struct {
 	chainConfig *params.ChainConfig
 	// Channel for shutting down the service
-	shutdownChan  chan bool    // Channel for shutting down the ethereum
-	stopDbUpgrade func() error // stop chain db sequential key upgrade
+	shutdownChan  chan bool // Channel for shutting down the ethereum
+	stopDbUpgrade func()    // stop chain db sequential key upgrade
 	// Handlers
 	txPool          *core.TxPool
+	txMu            sync.Mutex
 	blockchain      *core.BlockChain
 	protocolManager *ProtocolManager
 	lesServer       LesServer
@@ -103,7 +105,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	if err != nil {
 		return nil, err
 	}
-	stopDbUpgrade := upgradeDeduplicateData(chainDb)
+	stopDbUpgrade := upgradeSequentialKeys(chainDb)
 	chainConfig, genesisHash, genesisErr := core.SetupGenesisBlock(chainDb, config.Genesis)
 	if _, ok := genesisErr.(*params.ConfigCompatError); genesisErr != nil && !ok {
 		return nil, genesisErr
@@ -148,10 +150,8 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		core.WriteChainConfig(chainDb, genesisHash, chainConfig)
 	}
 
-	if config.TxPool.Journal != "" {
-		config.TxPool.Journal = ctx.ResolvePath(config.TxPool.Journal)
-	}
-	eth.txPool = core.NewTxPool(config.TxPool, eth.chainConfig, eth.EventMux(), eth.blockchain.State, eth.blockchain.GasLimit)
+	newPool := core.NewTxPool(config.TxPool, eth.chainConfig, eth.EventMux(), eth.blockchain.State, eth.blockchain.GasLimit)
+	eth.txPool = newPool
 
 	maxPeers := config.MaxPeers
 	if config.LightServ > 0 {
@@ -166,6 +166,19 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 
 	if eth.protocolManager, err = NewProtocolManager(eth.chainConfig, config.SyncMode, config.NetworkId, maxPeers, eth.eventMux, eth.txPool, eth.engine, eth.blockchain, chainDb); err != nil {
 		return nil, err
+	}
+
+	if config.BFT {
+		if bft, ok := eth.engine.(*bft.BFT); ok {
+			bftDb, err := ctx.OpenDatabase("bftData", config.DatabaseCache, config.DatabaseHandles)
+			if err != nil {
+				return nil, err
+			}
+			if err = bft.SetupProtocolManager(chainConfig, eth.protocolManager.networkId, eth.eventMux, eth.txPool, eth.blockchain, chainDb, bftDb, vmConfig, config.Validators, config.PrivateKeyHex, config.Etherbase, config.AllowEmpty, config.ByzantineMode); err != nil {
+				return nil, err
+			}
+			bft.Start()
+		}
 	}
 
 	eth.miner = miner.New(eth, eth.chainConfig, eth.EventMux(), eth.engine)
@@ -228,10 +241,17 @@ func CreateConsensusEngine(ctx *node.ServiceContext, config *Config, chainConfig
 		log.Warn("Ethash used in shared mode")
 		return ethash.NewShared()
 	default:
-		engine := ethash.New(ctx.ResolvePath(config.EthashCacheDir), config.EthashCachesInMem, config.EthashCachesOnDisk,
-			config.EthashDatasetDir, config.EthashDatasetsInMem, config.EthashDatasetsOnDisk)
-		engine.SetThreads(-1) // Disable CPU mining
-		return engine
+		log.Info("config bft is ", "bft", config.BFT)
+		if config.BFT {
+			engine := bft.New(chainConfig, db)
+			config.SyncMode = downloader.FullSync
+			return engine
+		} else {
+			engine := ethash.New(ctx.ResolvePath(config.EthashCacheDir), config.EthashCachesInMem, config.EthashCachesOnDisk,
+				config.EthashDatasetDir, config.EthashDatasetsInMem, config.EthashDatasetsOnDisk)
+			engine.SetThreads(-1) // Disable CPU mining
+			return engine
+		}
 	}
 }
 
@@ -364,7 +384,9 @@ func (s *Ethereum) Downloader() *downloader.Downloader { return s.protocolManage
 // Protocols implements node.Service, returning all the currently configured
 // network protocols to start.
 func (s *Ethereum) Protocols() []p2p.Protocol {
-	if s.lesServer == nil {
+	if bft, ok := s.engine.(*bft.BFT); ok {
+		return append(s.protocolManager.SubProtocols, bft.Protocols()...)
+	} else if s.lesServer == nil {
 		return s.protocolManager.SubProtocols
 	} else {
 		return append(s.protocolManager.SubProtocols, s.lesServer.Protocols()...)

@@ -413,9 +413,8 @@ func (f *faucet) apiHandler(conn *websocket.Conn) {
 		// Iterate over all the files and look for Ethereum addresses
 		var address common.Address
 		for _, file := range gist.Files {
-			content := strings.TrimSpace(file.Content)
-			if len(content) == 2+common.AddressLength*2 {
-				address = common.HexToAddress(content)
+			if len(file.Content) == 2+common.AddressLength*2 {
+				address = common.HexToAddress(file.Content)
 			}
 		}
 		if address == (common.Address{}) {

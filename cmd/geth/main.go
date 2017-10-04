@@ -66,9 +66,6 @@ var (
 		utils.EthashDatasetDirFlag,
 		utils.EthashDatasetsInMemoryFlag,
 		utils.EthashDatasetsOnDiskFlag,
-		utils.TxPoolNoLocalsFlag,
-		utils.TxPoolJournalFlag,
-		utils.TxPoolRejournalFlag,
 		utils.TxPoolPriceLimitFlag,
 		utils.TxPoolPriceBumpFlag,
 		utils.TxPoolAccountSlotsFlag,
@@ -112,6 +109,12 @@ var (
 		utils.GpoPercentileFlag,
 		utils.ExtraDataFlag,
 		configFileFlag,
+		// bft parameters
+		utils.NumValidatorsFlag,
+		utils.NodeNumFlag,
+		utils.BFTFlag,
+		utils.AllowEmptyFlag,
+		utils.ByzantineModeFlag,
 	}
 
 	rpcFlags = []cli.Flag{

@@ -208,8 +208,8 @@ web3._extend({
 			params: 1
 		}),
 		new web3._extend.Method({
-			name: 'traceBlockFromFile',
-			call: 'debug_traceBlockFromFile',
+			name: 'traceBlockByFile',
+			call: 'debug_traceBlockByFile',
 			params: 1
 		}),
 		new web3._extend.Method({

@@ -293,7 +293,9 @@ func (self *worker) wait() {
 				// check if canon block and write transactions
 				if stat == core.CanonStatTy {
 					// This puts transactions in a extra db for rpc
-					core.WriteTxLookupEntries(self.chainDb, block)
+					core.WriteTransactions(self.chainDb, block)
+					// store the receipts
+					core.WriteReceipts(self.chainDb, work.receipts)
 					// Write map map bloom filters
 					core.WriteMipmapBloom(self.chainDb, block.NumberU64(), work.receipts)
 					// implicit by posting ChainHeadEvent
@@ -441,8 +443,16 @@ func (self *worker) commitNewWork() {
 		log.Error("Failed to fetch pending transactions", "err", err)
 		return
 	}
+
 	txs := types.NewTransactionsByPriceAndNonce(pending)
+
 	work.commitTransactions(self.mux, txs, self.chain, self.coinbase)
+
+	if atomic.LoadInt32(&self.mining) == 1 && work.tcount == 0 {
+		time.Sleep(3 * time.Second)
+		go self.commitNewWork()
+		return
+	}
 
 	self.eth.TxPool().RemoveBatch(work.failedTxs)
 

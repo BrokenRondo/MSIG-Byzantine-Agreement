@@ -128,6 +128,11 @@ type Config struct {
 	// If the module list is empty, all RPC API endpoints designated public will be
 	// exposed.
 	WSModules []string `toml:",omitempty"`
+
+	// BFT validators node list
+	NumValidators int
+	// BFT validators node number
+	NodeNum int
 }
 
 // IPCEndpoint resolves an IPC endpoint based on a configured value, taking into
@@ -316,8 +321,8 @@ func (c *Config) StaticNodes() []*discover.Node {
 	return c.parsePersistentNodes(c.resolvePath(datadirStaticNodes))
 }
 
-// TrustedNodes returns a list of node enode URLs configured as trusted nodes.
-func (c *Config) TrustedNodes() []*discover.Node {
+// TrusterNodes returns a list of node enode URLs configured as trusted nodes.
+func (c *Config) TrusterNodes() []*discover.Node {
 	return c.parsePersistentNodes(c.resolvePath(datadirTrustedNodes))
 }
 

@@ -19,6 +19,7 @@ package utils
 
 import (
 	"crypto/ecdsa"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"math/big"
@@ -71,10 +72,8 @@ SUBCOMMANDS:
 
 func init() {
 	cli.AppHelpTemplate = `{{.Name}} {{if .Flags}}[global options] {{end}}command{{if .Flags}} [command options]{{end}} [arguments...]
-
 VERSION:
    {{.Version}}
-
 COMMANDS:
    {{range .Commands}}{{.Name}}{{with .ShortName}}, {{.}}{{end}}{{ "\t" }}{{.Usage}}
    {{end}}{{if .Flags}}
@@ -209,20 +208,6 @@ var (
 		Value: eth.DefaultConfig.EthashDatasetsOnDisk,
 	}
 	// Transaction pool settings
-	TxPoolNoLocalsFlag = cli.BoolFlag{
-		Name:  "txpool.nolocals",
-		Usage: "Disables price exemptions for locally submitted transactions",
-	}
-	TxPoolJournalFlag = cli.StringFlag{
-		Name:  "txpool.journal",
-		Usage: "Disk journal for local transaction to survive node restarts",
-		Value: core.DefaultTxPoolConfig.Journal,
-	}
-	TxPoolRejournalFlag = cli.DurationFlag{
-		Name:  "txpool.rejournal",
-		Usage: "Time interval to regenerate the local transaction journal",
-		Value: core.DefaultTxPoolConfig.Rejournal,
-	}
 	TxPoolPriceLimitFlag = cli.Uint64Flag{
 		Name:  "txpool.pricelimit",
 		Usage: "Minimum gas price limit to enforce for acceptance into the pool",
@@ -486,6 +471,31 @@ var (
 		Usage: "Minimum POW accepted",
 		Value: whisper.DefaultMinimumPoW,
 	}
+
+	// BFT parameters
+	NumValidatorsFlag = cli.IntFlag{
+		Name:  "num-validators",
+		Usage: "number of validators",
+		Value: 1,
+	}
+	NodeNumFlag = cli.IntFlag{
+		Name:  "node-num",
+		Usage: "node's specific number",
+		Value: 0,
+	}
+	BFTFlag = cli.BoolFlag{
+		Name:  "bft",
+		Usage: "change consensus to bft with true",
+	}
+	AllowEmptyFlag = cli.BoolFlag{
+		Name:  "allow-empty",
+		Usage: "allow empty block",
+	}
+	ByzantineModeFlag = cli.IntFlag{
+		Name:  "byzantine-mode",
+		Usage: "changes the mode for node strategy, 0 is normal, 1 is DifferentProposal, 2 is AlwaysVote, 3 is AlwaysAgree, 4 is NoResponse, 5 is ByzantineMode with 1~3",
+		Value: 0,
+	}
 )
 
 // MakeDataDir retrieves the currently requested data directory, terminating
@@ -518,6 +528,10 @@ func setNodeKey(ctx *cli.Context, cfg *p2p.Config) {
 	switch {
 	case file != "" && hex != "":
 		Fatalf("Options %q and %q are mutually exclusive", NodeKeyFileFlag.Name, NodeKeyHexFlag.Name)
+	case ctx.GlobalBool(BFTFlag.Name):
+		nodeNum := ctx.GlobalString(NodeNumFlag.Name)
+		key, _ = MakePrivatekey(nodeNum)
+		cfg.PrivateKey = key
 	case file != "":
 		if key, err = crypto.LoadECDSA(file); err != nil {
 			Fatalf("Option %q: %v", NodeKeyFileFlag.Name, err)
@@ -759,6 +773,36 @@ func MakePasswordList(ctx *cli.Context) []string {
 	return lines
 }
 
+func MakeBFTPrivateKeyHex(ctx *cli.Context) string {
+	key, _ := MakePrivatekey(ctx.GlobalString(NodeNumFlag.Name))
+	return PrikeyToHex(key)
+}
+
+func MakePrivatekey(seed string) (*ecdsa.PrivateKey, error) {
+	s := []byte(seed)
+	return crypto.ToECDSA(crypto.Keccak256(s))
+}
+
+func PrikeyToHex(key *ecdsa.PrivateKey) string {
+	return hex.EncodeToString(crypto.FromECDSA(key))
+}
+
+// create validator addresses
+func MakeValidators(accman *accounts.Manager, ctx *cli.Context) []common.Address {
+	num_validators := ctx.GlobalInt(NumValidatorsFlag.Name)
+	validators := []common.Address{}
+	ks := accman.Backends(keystore.KeyStoreType)[0].(*keystore.KeyStore)
+	for i := 0; i < num_validators; i++ {
+		s := strconv.Itoa(i)
+		privatekey, _ := MakePrivatekey(s)
+		validators = append(validators, crypto.PubkeyToAddress(privatekey.PublicKey))
+		if i == ctx.GlobalInt(NodeNumFlag.Name) {
+			ks.ImportECDSA(privatekey, "")
+		}
+	}
+	return validators
+}
+
 func SetP2PConfig(ctx *cli.Context, cfg *p2p.Config) {
 	setNodeKey(ctx, cfg)
 	setNAT(ctx, cfg)
@@ -845,15 +889,6 @@ func setGPO(ctx *cli.Context, cfg *gasprice.Config) {
 }
 
 func setTxPool(ctx *cli.Context, cfg *core.TxPoolConfig) {
-	if ctx.GlobalIsSet(TxPoolNoLocalsFlag.Name) {
-		cfg.NoLocals = ctx.GlobalBool(TxPoolNoLocalsFlag.Name)
-	}
-	if ctx.GlobalIsSet(TxPoolJournalFlag.Name) {
-		cfg.Journal = ctx.GlobalString(TxPoolJournalFlag.Name)
-	}
-	if ctx.GlobalIsSet(TxPoolRejournalFlag.Name) {
-		cfg.Rejournal = ctx.GlobalDuration(TxPoolRejournalFlag.Name)
-	}
 	if ctx.GlobalIsSet(TxPoolPriceLimitFlag.Name) {
 		cfg.PriceLimit = ctx.GlobalUint64(TxPoolPriceLimitFlag.Name)
 	}
@@ -898,6 +933,16 @@ func setEthash(ctx *cli.Context, cfg *eth.Config) {
 	}
 }
 
+func setBFT(ctx *cli.Context, cfg *eth.Config, stack *node.Node) {
+	cfg.BFT = ctx.GlobalBool(BFTFlag.Name)
+	if cfg.BFT {
+		cfg.Validators = MakeValidators(stack.AccountManager(), ctx)
+		cfg.PrivateKeyHex = MakeBFTPrivateKeyHex(ctx)
+		cfg.AllowEmpty = ctx.GlobalBool(AllowEmptyFlag.Name)
+		cfg.ByzantineMode = ctx.GlobalInt(ByzantineModeFlag.Name)
+	}
+}
+
 func checkExclusive(ctx *cli.Context, flags ...cli.Flag) {
 	set := make([]string, 0, 1)
 	for _, flag := range flags {
@@ -931,8 +976,12 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 	setGPO(ctx, &cfg.GPO)
 	setTxPool(ctx, &cfg.TxPool)
 	setEthash(ctx, cfg)
+	setBFT(ctx, cfg, stack)
 
 	switch {
+	case ctx.GlobalBool(BFTFlag.Name):
+		key, _ := MakePrivatekey(ctx.GlobalString(NodeNumFlag.Name))
+		cfg.Etherbase = crypto.PubkeyToAddress(key.PublicKey)
 	case ctx.GlobalIsSet(SyncModeFlag.Name):
 		cfg.SyncMode = *GlobalTextMarshaler(ctx, SyncModeFlag.Name).(*downloader.SyncMode)
 	case ctx.GlobalBool(FastSyncFlag.Name):

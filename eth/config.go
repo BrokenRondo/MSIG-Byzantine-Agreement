@@ -114,6 +114,13 @@ type Config struct {
 	PowFake   bool   `toml:"-"`
 	PowTest   bool   `toml:"-"`
 	PowShared bool   `toml:"-"`
+
+	// bft parameters
+	BFT           bool
+	Validators    []common.Address
+	PrivateKeyHex string
+	AllowEmpty    bool
+	ByzantineMode int
 }
 
 type configMarshaling struct {

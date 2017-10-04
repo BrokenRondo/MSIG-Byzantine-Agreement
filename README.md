@@ -1,301 +1,143 @@
-## Go Ethereum
+# NCCU BFT Consensus for Go Ethereum (geth)
+NCCU BFT Consensus for Go Ethereum is developed by the Blockchain group of Dept. of Computer Science at the National Chengchi University, Taiwan.
 
-Official golang implementation of the Ethereum protocol.
+# Background
+This project, initiated in August 2016, aims to develop a variant of geth with Byzantine Fault Tolerance (BFT) consensus for use in a private deployment of Ethereum. In the beginning, we followed the consensus approach of [Hydrachain](https://github.com/HydraChain/hydrachain) to develop our consensus protocol. A salient feature of Hydrachain consensus protocol is that a block can be committed immediately by a node participating in the consensus once the node intercepts a quorum for the block. This can be viewed as an optimization attempting to minimize the latency of a block.
 
-[![API Reference](
-https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
-)](https://godoc.org/github.com/ethereum/go-ethereum)
-[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/ethereum/go-ethereum?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+However, as we had finished the implementation we soon realized that such an optimized commitment might be premature and leads to a fork. Both safety and liveness of consensus will be endangered, though we had submitted only [an issue of liveness](https://github.com/HydraChain/hydrachain/issues/83). Therefore, we changed our protocol by adding a phase that prevents premature commitment. The newly added phase is invoked after a node intercepts a quorum. The resulting protocol is then similar to the well known PBFT by Castro-Liskov (1999), as this newly added phase serves the same purpose as the Commit phase in PBFT.
 
-Automated builds are available for stable releases and the unstable master branch.
-Binary archives are published at https://geth.ethereum.org/downloads/.
+Note that HydraChain is inspired by [Tendermint](https://tendermint.com/), a PBFT-like consensus protocol. Indeed, one can deem HydraChain as a simplification of Tendermint. Hence, the demand to add one more phase to HydryChain inevitably steers our focus to Tendermint. Indeed, our revised implementation still keeps the proof-of-lock-change or PoLC mechanism that was first proposed in Tendermint and inherited in Hydrachain to gain further efficiency in the consensus process during round change. 
 
-## Building the source
+Finally, right after we finished the implementation of the revised protocol, geth released a new version, 1.6.0, with a pluggable framework of consensus engine. As such an framework is also part of the original goal of this project, we adapted our implementation to a large degree to fit into the new consensus engine of geth and completed the current version of NCCU BFT consensus for geth.
 
-For prerequisites and detailed build instructions please read the
-[Installation Instructions](https://github.com/ethereum/go-ethereum/wiki/Building-Ethereum)
-on the wiki.
-
-Building geth requires both a Go (version 1.7 or later) and a C compiler.
-You can install them using your favourite package manager.
-Once the dependencies are installed, run
-
-    make geth
-
-or, to build the full suite of utilities:
-
-    make all
-
-## Executables
-
-The go-ethereum project comes with several wrappers/executables found in the `cmd` directory.
-
-| Command    | Description |
-|:----------:|-------------|
-| **`geth`** | Our main Ethereum CLI client. It is the entry point into the Ethereum network (main-, test- or private net), capable of running as a full node (default) archive node (retaining all historical state) or a light node (retrieving data live). It can be used by other processes as a gateway into the Ethereum network via JSON RPC endpoints exposed on top of HTTP, WebSocket and/or IPC transports. `geth --help` and the [CLI Wiki page](https://github.com/ethereum/go-ethereum/wiki/Command-Line-Options) for command line options. |
-| `abigen` | Source code generator to convert Ethereum contract definitions into easy to use, compile-time type-safe Go packages. It operates on plain [Ethereum contract ABIs](https://github.com/ethereum/wiki/wiki/Ethereum-Contract-ABI) with expanded functionality if the contract bytecode is also available. However it also accepts Solidity source files, making development much more streamlined. Please see our [Native DApps](https://github.com/ethereum/go-ethereum/wiki/Native-DApps:-Go-bindings-to-Ethereum-contracts) wiki page for details. |
-| `bootnode` | Stripped down version of our Ethereum client implementation that only takes part in the network node discovery protocol, but does not run any of the higher level application protocols. It can be used as a lightweight bootstrap node to aid in finding peers in private networks. |
-| `evm` | Developer utility version of the EVM (Ethereum Virtual Machine) that is capable of running bytecode snippets within a configurable environment and execution mode. Its purpose is to allow insolated, fine-grained debugging of EVM opcodes (e.g. `evm --code 60ff60ff --debug`). |
-| `gethrpctest` | Developer utility tool to support our [ethereum/rpc-test](https://github.com/ethereum/rpc-tests) test suite which validates baseline conformity to the [Ethereum JSON RPC](https://github.com/ethereum/wiki/wiki/JSON-RPC) specs. Please see the [test suite's readme](https://github.com/ethereum/rpc-tests/blob/master/README.md) for details. |
-| `rlpdump` | Developer utility tool to convert binary RLP ([Recursive Length Prefix](https://github.com/ethereum/wiki/wiki/RLP)) dumps (data encoding used by the Ethereum protocol both network as well as consensus wise) to user friendlier hierarchical representation (e.g. `rlpdump --hex CE0183FFFFFFC4C304050583616263`). |
-| `swarm`    | swarm daemon and tools. This is the entrypoint for the swarm network. `swarm --help` for command line options and subcommands. See https://swarm-guide.readthedocs.io for swarm documentation. |
-
-## Running geth
-
-Going through all the possible command line flags is out of scope here (please consult our
-[CLI Wiki page](https://github.com/ethereum/go-ethereum/wiki/Command-Line-Options)), but we've
-enumerated a few common parameter combos to get you up to speed quickly on how you can run your
-own Geth instance.
-
-### Full node on the main Ethereum network
-
-By far the most common scenario is people wanting to simply interact with the Ethereum network:
-create accounts; transfer funds; deploy and interact with contracts. For this particular use-case
-the user doesn't care about years-old historical data, so we can fast-sync quickly to the current
-state of the network. To do so:
-
-```
-$ geth --fast --cache=512 console
+# Build from source
+Building geth requires both a Go (version 1.7 or later) and a C compiler. Once the dependencies are installed, run
+```sh
+make geth
 ```
 
-This command will:
+# Running geth
 
- * Start geth in fast sync mode (`--fast`), causing it to download more data in exchange for avoiding
-   processing the entire history of the Ethereum network, which is very CPU intensive.
- * Bump the memory allowance of the database to 512MB (`--cache=512`), which can help significantly in
-   sync times especially for HDD users. This flag is optional and you can set it as high or as low as
-   you'd like, though we'd recommend the 512MB - 2GB range.
- * Start up Geth's built-in interactive [JavaScript console](https://github.com/ethereum/go-ethereum/wiki/JavaScript-Console),
-   (via the trailing `console` subcommand) through which you can invoke all official [`web3` methods](https://github.com/ethereum/wiki/wiki/JavaScript-API)
-   as well as Geth's own [management APIs](https://github.com/ethereum/go-ethereum/wiki/Management-APIs).
-   This too is optional and if you leave it out you can always attach to an already running Geth instance
-   with `geth attach`.
+Besides the flags geth support, there are three new command line flags to setup a BFT-consensus private chain:
 
-### Full node on the Ethereum test network
 
-Transitioning towards developers, if you'd like to play around with creating Ethereum contracts, you
-almost certainly would like to do that without any real money involved until you get the hang of the
-entire system. In other words, instead of attaching to the main network, you want to join the **test**
-network with your node, which is fully equivalent to the main network, but with play-Ether only.
+  * `--bft` Change the consensus engine to NCCU-BFT consensus.
+  * `--num_validators value` The number of the validators in this chain.
+  * `--node_num value` The identity number of this node (start with 0).
+  * `--allow_empty` Allow blocks without transaction.
 
+To start a NCCU-BFT chain with 2 validators, run the following command after *init*
+```sh
+geth --datadir "path_for_node1" --bft --allow-empty --num-validators 2 --node-num 0
 ```
-$ geth --testnet --fast --cache=512 console
+and 
+```sh
+geth --datadir "path_for_node2" --bft --allow-empty --num-validators 2 --node-num 1
 ```
+make sure your nodes are connected by using cli or static-nodes.json file.
 
-The `--fast`, `--cache` flags and `console` subcommand have the exact same meaning as above and they
-are equally useful on the testnet too. Please see above for their explanations if you've skipped to
-here.
-
-Specifying the `--testnet` flag however will reconfigure your Geth instance a bit:
-
- * Instead of using the default data directory (`~/.ethereum` on Linux for example), Geth will nest
-   itself one level deeper into a `testnet` subfolder (`~/.ethereum/testnet` on Linux). Note, on OSX
-   and Linux this also means that attaching to a running testnet node requires the use of a custom
-   endpoint since `geth attach` will try to attach to a production node endpoint by default. E.g.
-   `geth attach <datadir>/testnet/geth.ipc`. Windows users are not affected by this.
- * Instead of connecting the main Ethereum network, the client will connect to the test network,
-   which uses different P2P bootnodes, different network IDs and genesis states.
-   
-*Note: Although there are some internal protective measures to prevent transactions from crossing
-over between the main network and test network, you should make sure to always use separate accounts
-for play-money and real-money. Unless you manually move accounts, Geth will by default correctly
-separate the two networks and will not make any accounts available between them.*
-
-### Configuration
-
-As an alternative to passing the numerous flags to the `geth` binary, you can also pass a configuration file via:
-
+If your nodes are conneted, you could run the miner with both nodes for consensus.
+```sh
+miner.start()
 ```
-$ geth --config /path/to/your_config.toml
+You should see the result within logs.
+
+You may specify the **--num_validators** to 1 and **--node_num** to 0 to start a private chain with BFT-consensus on only one node.
+
+# Example
+
+In examples/4nodes, there are the scripts to start a 4-nodes NCCU-BFT chain example. To start the chain, go to examples/4nodes and run
+
+```sh
+./start.sh
 ```
 
-To get an idea how the file should look like you can use the `dumpconfig` subcommand to export your existing configuration:
+To stop the process
 
-```
-$ geth --your-favourite-flags dumpconfig
-```
-
-*Note: This works only with geth v1.6.0 and above*
-
-#### Docker quick start
-
-One of the quickest ways to get Ethereum up and running on your machine is by using Docker:
-
-```
-docker run -d --name ethereum-node -v /Users/alice/ethereum:/root \
-           -p 8545:8545 -p 30303:30303 \
-           ethereum/client-go --fast --cache=512
+```sh
+./stop.sh
 ```
 
-This will start geth in fast sync mode with a DB memory allowance of 512MB just as the above command does.  It will also create a persistent volume in your home directory for saving your blockchain as well as map the default ports. There is also an `alpine` tag available for a slim version of the image.
 
-### Programatically interfacing Geth nodes
+# Consensus
+We sketch our consensus protocol as follows and refer the readers to  [NCCU-BFT](https://github.com/NCCUCS-PLSM/NCCU-BFT-for-Go-Ethereum/blob/nccu-bft/docs/consensus_protocol_detail.pdf) for more details.
+ 
+### Terminology
+  - Block: An Ethereum block, denoted by B.
+  - Height: The height of processing block’s height, denoted by H.
+  - Round: A round includes the 4 consensus steps, denoted by R. There may be multiple R in a H.
+  - Validators: The nodes that could participate the consensus process. The total number of validators is denoted by N.
+  - Proposer: A validator that could propose a Proposal in a round.
+ 
+### Vote
+There are two kinds of vote:
+ * Prevote(H, R, B)
+ * PrecommitVote(H, R, B)
 
-As a developer, sooner rather than later you'll want to start interacting with Geth and the Ethereum
-network via your own programs and not manually through the console. To aid this, Geth has built in
-support for a JSON-RPC based APIs ([standard APIs](https://github.com/ethereum/wiki/wiki/JSON-RPC) and
-[Geth specific APIs](https://github.com/ethereum/go-ethereum/wiki/Management-APIs)). These can be
-exposed via HTTP, WebSockets and IPC (unix sockets on unix based platforms, and named pipes on Windows).
+Validators vote a Prevote/PrecommitVote to a block B to present their states at height H and round R.
+### Lockset
+The Lockset collects the votes for consensus steps in height H and round R, there are two kinds of Lockset:
+ * Prevote Lockset(H, R)
+ * PrecommitVote Lockset(H, R)
 
-The IPC interface is enabled by default and exposes all the APIs supported by Geth, whereas the HTTP
-and WS interfaces need to manually be enabled and only expose a subset of APIs due to security reasons.
-These can be turned on/off and configured as you'd expect.
+If there are over ⅔ N vote to the same block B within a Lockset, it has a **Quorum** to the block B.
+ 
+### Proposals
+The proposer should propose a proposal containing a block B at the beginning of a round.
+ * BlockProposal(H, R, B): A BlockProposal includes a new block B for voting at height H and round R.
+ * VotingInstruction(H, R, B): Proposes the block B as it has a **Quorum** in the Prevote Lockset at previous round R', R' < R. (The term, "Votininstruction", originates from Hydrachain, and is used to signal the state of QuorumPossible, in which over 1/3 N prevotes for a block were received. Here we inherit the term, but change the definition and require a proposer to get a **Quorum** on a block to propose a VotingInstruction.)
+ 
+### States Diagram
+![alt text](https://github.com/NCCUCS-PLSM/NCCU-BFT-for-Go-Ethereum/blob/nccu-bft/docs/states_diagram.png)
+ 
+### Consensus steps
+##### Step 1 *Propose*(height:H, round:R): 
+The proposer of (H, R) should propose a proposal with a block.
+1. Check whether the validator is the proposer. If not, go to Step 2.
+2. If there is a **Quorum** to a block B1 in the Prevote Lockset at previous round, propose a VotingInstruction(B1), broadcast Prevote(H, R, B1), and go to Step 3.
+3. Else Create a new block B2 and propose a BlockProposal(B2), broadcast  Prevote(H, R, B2), and go to Step 3.
+ 
+##### Step 2 *Prevote*(height:H, round:R):
+Each validator should broadcast a Prevote(H, R, B) for a block or nothing(nil).
+1. If the validator voted a PrecommitVote(H, R, B1) at previous round, broadcast Prevote(H, R, B1).
+2. Else if node receives a VotingInstruction(H, R, B2), broadcast Prevote(H, R, B2).
+3. Else if node receives a BlockProposal(H, R, B3), broadcast Prevote(H, R, B3).
+4. Else if TimeoutProposal reaches, broadcast Prevote(H, R, nil).
+5. Go to Step 3.
+ 
+##### Step 3 *Precommit*(height:H, round:R):
+Each validator should broadcast a PrecommitVote(H, R, B) for a block or nothing(nil).
+1. Collect Prevotes to Prevote Lockset(H, R).  
+2. If there is a  **Quorum** to a block B in Prevote Lockset(H, R), broadcast PrecommitVote(H, R, B) and go to Step 4.
+3. Else, wait until TimeoutProposalPrevote to store more Prevotes. if there is still no **Quorum**, broadcast PrecommitVote(H, R, nil) and go to Step 4.
+ 
+##### Step 4 *Commit*(height:H, round:R):
+Each validator checks the PrecommitVote Lockset(H, R) to determine whether it could commit or not.
+1. Collect PrecommitVotes to PrecommitVote Lockset(H, R).   
+2. If there is a **Quorum** to block B in PrecommitVote Lockset(H, R), then commit B and go to Step 1 of round 0, height H+1.
+3. Else, wait for TimeoutPrecommitVote to store more PrecommitVotes in PrecommitVote Lockset(H, R). If there is still no **Quorum**, go to Step 1 of round R+1, height H.
+ 
+### Proposer selection:
+We use Round-Robin to change proposer in each round.
+ 
+### Optimization:
+In Step 3 and Step 4, if the validator gets a **Quorum**, it can proceed immediately. 
+ 
+### Constants
+  - NumberOfValidators: Number of validators in the network.
+  - AllowEmpty: A boolean value to determine whether to allow empty block creating. 
+  - TimeoutProposal: The Maximum time for waiting a proposal. This is set to 3 seconds initially.
+  - TimeoutProposalPrevote: The maximum time for waiting more Prevote. This is set to 1 second initially.
+  - TimeoutPrecommitVote: The maximum time for waiting more PrecommitVote. This is set to 1 seconds initially. 
+  - TimeoutFactor: This is the factor used to extend the above timeouts after each round. More specifically, TimeoutX in   - round R = TimeoutX * TimeoutFactorR. TimeoutFactor is set to 1.5.
+### Block header
+We set the following two fields to constants.
+  - difficulty: Always set to 1.
+  - nonce: Always set to 0.
+ 
+### Proof of Consensus
+For inserting a block and synchronization, a block should have a Precommit Lockset that includes a **Quorum**, to prove that the block is validated by the consensus process. 
+ 
+# Future work
+Currently the validator set is fixed when starting geth. We plan to add some mechanisms to allow dynamic changes of validators. 
 
-HTTP based JSON-RPC API options:
-
-  * `--rpc` Enable the HTTP-RPC server
-  * `--rpcaddr` HTTP-RPC server listening interface (default: "localhost")
-  * `--rpcport` HTTP-RPC server listening port (default: 8545)
-  * `--rpcapi` API's offered over the HTTP-RPC interface (default: "eth,net,web3")
-  * `--rpccorsdomain` Comma separated list of domains from which to accept cross origin requests (browser enforced)
-  * `--ws` Enable the WS-RPC server
-  * `--wsaddr` WS-RPC server listening interface (default: "localhost")
-  * `--wsport` WS-RPC server listening port (default: 8546)
-  * `--wsapi` API's offered over the WS-RPC interface (default: "eth,net,web3")
-  * `--wsorigins` Origins from which to accept websockets requests
-  * `--ipcdisable` Disable the IPC-RPC server
-  * `--ipcapi` API's offered over the IPC-RPC interface (default: "admin,debug,eth,miner,net,personal,shh,txpool,web3")
-  * `--ipcpath` Filename for IPC socket/pipe within the datadir (explicit paths escape it)
-
-You'll need to use your own programming environments' capabilities (libraries, tools, etc) to connect
-via HTTP, WS or IPC to a Geth node configured with the above flags and you'll need to speak [JSON-RPC](http://www.jsonrpc.org/specification)
-on all transports. You can reuse the same connection for multiple requests!
-
-**Note: Please understand the security implications of opening up an HTTP/WS based transport before
-doing so! Hackers on the internet are actively trying to subvert Ethereum nodes with exposed APIs!
-Further, all browser tabs can access locally running webservers, so malicious webpages could try to
-subvert locally available APIs!**
-
-### Operating a private network
-
-Maintaining your own private network is more involved as a lot of configurations taken for granted in
-the official networks need to be manually set up.
-
-#### Defining the private genesis state
-
-First, you'll need to create the genesis state of your networks, which all nodes need to be aware of
-and agree upon. This consists of a small JSON file (e.g. call it `genesis.json`):
-
-```json
-{
-  "config": {
-        "chainId": 0,
-        "homesteadBlock": 0,
-        "eip155Block": 0,
-        "eip158Block": 0
-    },
-  "alloc"      : {},
-  "coinbase"   : "0x0000000000000000000000000000000000000000",
-  "difficulty" : "0x20000",
-  "extraData"  : "",
-  "gasLimit"   : "0x2fefd8",
-  "nonce"      : "0x0000000000000042",
-  "mixhash"    : "0x0000000000000000000000000000000000000000000000000000000000000000",
-  "parentHash" : "0x0000000000000000000000000000000000000000000000000000000000000000",
-  "timestamp"  : "0x00"
-}
-```
-
-The above fields should be fine for most purposes, although we'd recommend changing the `nonce` to
-some random value so you prevent unknown remote nodes from being able to connect to you. If you'd
-like to pre-fund some accounts for easier testing, you can populate the `alloc` field with account
-configs:
-
-```json
-"alloc": {
-  "0x0000000000000000000000000000000000000001": {"balance": "111111111"},
-  "0x0000000000000000000000000000000000000002": {"balance": "222222222"}
-}
-```
-
-With the genesis state defined in the above JSON file, you'll need to initialize **every** Geth node
-with it prior to starting it up to ensure all blockchain parameters are correctly set:
-
-```
-$ geth init path/to/genesis.json
-```
-
-#### Creating the rendezvous point
-
-With all nodes that you want to run initialized to the desired genesis state, you'll need to start a
-bootstrap node that others can use to find each other in your network and/or over the internet. The
-clean way is to configure and run a dedicated bootnode:
-
-```
-$ bootnode --genkey=boot.key
-$ bootnode --nodekey=boot.key
-```
-
-With the bootnode online, it will display an [`enode` URL](https://github.com/ethereum/wiki/wiki/enode-url-format)
-that other nodes can use to connect to it and exchange peer information. Make sure to replace the
-displayed IP address information (most probably `[::]`) with your externally accessible IP to get the
-actual `enode` URL.
-
-*Note: You could also use a full fledged Geth node as a bootnode, but it's the less recommended way.*
-
-#### Starting up your member nodes
-
-With the bootnode operational and externally reachable (you can try `telnet <ip> <port>` to ensure
-it's indeed reachable), start every subsequent Geth node pointed to the bootnode for peer discovery
-via the `--bootnodes` flag. It will probably also be desirable to keep the data directory of your
-private network separated, so do also specify a custom `--datadir` flag.
-
-```
-$ geth --datadir=path/to/custom/data/folder --bootnodes=<bootnode-enode-url-from-above>
-```
-
-*Note: Since your network will be completely cut off from the main and test networks, you'll also
-need to configure a miner to process transactions and create new blocks for you.*
-
-#### Running a private miner
-
-Mining on the public Ethereum network is a complex task as it's only feasible using GPUs, requiring
-an OpenCL or CUDA enabled `ethminer` instance. For information on such a setup, please consult the
-[EtherMining subreddit](https://www.reddit.com/r/EtherMining/) and the [Genoil miner](https://github.com/Genoil/cpp-ethereum)
-repository.
-
-In a private network setting however, a single CPU miner instance is more than enough for practical
-purposes as it can produce a stable stream of blocks at the correct intervals without needing heavy
-resources (consider running on a single thread, no need for multiple ones either). To start a Geth
-instance for mining, run it with all your usual flags, extended by:
-
-```
-$ geth <usual-flags> --mine --minerthreads=1 --etherbase=0x0000000000000000000000000000000000000000
-```
-
-Which will start mining bocks and transactions on a single CPU thread, crediting all proceedings to
-the account specified by `--etherbase`. You can further tune the mining by changing the default gas
-limit blocks converge to (`--targetgaslimit`) and the price transactions are accepted at (`--gasprice`).
-
-## Contribution
-
-Thank you for considering to help out with the source code! We welcome contributions from
-anyone on the internet, and are grateful for even the smallest of fixes!
-
-If you'd like to contribute to go-ethereum, please fork, fix, commit and send a pull request
-for the maintainers to review and merge into the main code base. If you wish to submit more
-complex changes though, please check up with the core devs first on [our gitter channel](https://gitter.im/ethereum/go-ethereum)
-to ensure those changes are in line with the general philosophy of the project and/or get some
-early feedback which can make both your efforts much lighter as well as our review and merge
-procedures quick and simple.
-
-Please make sure your contributions adhere to our coding guidelines:
-
- * Code must adhere to the official Go [formatting](https://golang.org/doc/effective_go.html#formatting) guidelines (i.e. uses [gofmt](https://golang.org/cmd/gofmt/)).
- * Code must be documented adhering to the official Go [commentary](https://golang.org/doc/effective_go.html#commentary) guidelines.
- * Pull requests need to be based on and opened against the `master` branch.
- * Commit messages should be prefixed with the package(s) they modify.
-   * E.g. "eth, rpc: make trace configs optional"
-
-Please see the [Developers' Guide](https://github.com/ethereum/go-ethereum/wiki/Developers'-Guide)
-for more details on configuring your environment, managing project dependencies and testing procedures.
-
-## License
-
-The go-ethereum library (i.e. all code outside of the `cmd` directory) is licensed under the
-[GNU Lesser General Public License v3.0](https://www.gnu.org/licenses/lgpl-3.0.en.html), also
-included in our repository in the `COPYING.LESSER` file.
-
-The go-ethereum binaries (i.e. all code inside of the `cmd` directory) is licensed under the
-[GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html), also included
-in our repository in the `COPYING` file.

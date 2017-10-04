@@ -68,11 +68,6 @@ services:
       - MINER_NAME={{.Etherbase}}
       - GAS_TARGET={{.GasTarget}}
       - GAS_PRICE={{.GasPrice}}
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "1m"
-        max-file: "10"
     restart: always
 `
 

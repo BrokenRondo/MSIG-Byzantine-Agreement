@@ -94,9 +94,9 @@ type testTxPool struct {
 	lock sync.RWMutex // Protects the transaction pool
 }
 
-// AddRemotes appends a batch of transactions to the pool, and notifies any
+// AddBatch appends a batch of transactions to the pool, and notifies any
 // listeners if the addition channel is non nil
-func (p *testTxPool) AddRemotes(txs []*types.Transaction) error {
+func (p *testTxPool) AddBatch(txs []*types.Transaction) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 

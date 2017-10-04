@@ -161,7 +161,6 @@ func newTestNode(t *testing.T, dir string) *testNode {
 	conf := &node.Config{
 		DataDir: dir,
 		IPCPath: "bzzd.ipc",
-		NoUSB:   true,
 	}
 	n, err := node.New(conf)
 	if err != nil {

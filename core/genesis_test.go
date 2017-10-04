@@ -32,12 +32,12 @@ import (
 
 func TestDefaultGenesisBlock(t *testing.T) {
 	block, _ := DefaultGenesisBlock().ToBlock()
-	if block.Hash() != params.MainnetGenesisHash {
-		t.Errorf("wrong mainnet genesis hash, got %v, want %v", block.Hash(), params.MainnetGenesisHash)
+	if block.Hash() != params.MainNetGenesisHash {
+		t.Errorf("wrong mainnet genesis hash, got %v, want %v", block.Hash(), params.MainNetGenesisHash)
 	}
 	block, _ = DefaultTestnetGenesisBlock().ToBlock()
-	if block.Hash() != params.TestnetGenesisHash {
-		t.Errorf("wrong testnet genesis hash, got %v, want %v", block.Hash(), params.TestnetGenesisHash)
+	if block.Hash() != params.TestNetGenesisHash {
+		t.Errorf("wrong testnet genesis hash, got %v, want %v", block.Hash(), params.TestNetGenesisHash)
 	}
 }
 
@@ -73,7 +73,7 @@ func TestSetupGenesis(t *testing.T) {
 			fn: func(db ethdb.Database) (*params.ChainConfig, common.Hash, error) {
 				return SetupGenesisBlock(db, nil)
 			},
-			wantHash:   params.MainnetGenesisHash,
+			wantHash:   params.MainNetGenesisHash,
 			wantConfig: params.MainnetChainConfig,
 		},
 		{
@@ -82,7 +82,7 @@ func TestSetupGenesis(t *testing.T) {
 				DefaultGenesisBlock().MustCommit(db)
 				return SetupGenesisBlock(db, nil)
 			},
-			wantHash:   params.MainnetGenesisHash,
+			wantHash:   params.MainNetGenesisHash,
 			wantConfig: params.MainnetChainConfig,
 		},
 		{
@@ -100,8 +100,8 @@ func TestSetupGenesis(t *testing.T) {
 				customg.MustCommit(db)
 				return SetupGenesisBlock(db, DefaultTestnetGenesisBlock())
 			},
-			wantErr:    &GenesisMismatchError{Stored: customghash, New: params.TestnetGenesisHash},
-			wantHash:   params.TestnetGenesisHash,
+			wantErr:    &GenesisMismatchError{Stored: customghash, New: params.TestNetGenesisHash},
+			wantHash:   params.TestNetGenesisHash,
 			wantConfig: params.TestnetChainConfig,
 		},
 		{

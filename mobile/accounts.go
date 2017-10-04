@@ -25,7 +25,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -112,7 +111,7 @@ func (ks *KeyStore) DeleteAccount(account *Account, passphrase string) error {
 // SignHash calculates a ECDSA signature for the given hash. The produced signature
 // is in the [R || S || V] format where V is 0 or 1.
 func (ks *KeyStore) SignHash(address *Address, hash []byte) (signature []byte, _ error) {
-	return ks.keystore.SignHash(accounts.Account{Address: address.address}, common.CopyBytes(hash))
+	return ks.keystore.SignHash(accounts.Account{Address: address.address}, hash)
 }
 
 // SignTx signs the given transaction with the requested account.
@@ -131,7 +130,7 @@ func (ks *KeyStore) SignTx(account *Account, tx *Transaction, chainID *BigInt) (
 // be decrypted with the given passphrase. The produced signature is in the
 // [R || S || V] format where V is 0 or 1.
 func (ks *KeyStore) SignHashPassphrase(account *Account, passphrase string, hash []byte) (signature []byte, _ error) {
-	return ks.keystore.SignHashWithPassphrase(account.account, passphrase, common.CopyBytes(hash))
+	return ks.keystore.SignHashWithPassphrase(account.account, passphrase, hash)
 }
 
 // SignTxPassphrase signs the transaction if the private key matching the
@@ -190,7 +189,7 @@ func (ks *KeyStore) ExportKey(account *Account, passphrase, newPassphrase string
 
 // ImportKey stores the given encrypted JSON key into the key directory.
 func (ks *KeyStore) ImportKey(keyJSON []byte, passphrase, newPassphrase string) (account *Account, _ error) {
-	acc, err := ks.keystore.Import(common.CopyBytes(keyJSON), passphrase, newPassphrase)
+	acc, err := ks.keystore.Import(keyJSON, passphrase, newPassphrase)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +198,7 @@ func (ks *KeyStore) ImportKey(keyJSON []byte, passphrase, newPassphrase string) 
 
 // ImportECDSAKey stores the given encrypted JSON key into the key directory.
 func (ks *KeyStore) ImportECDSAKey(key []byte, passphrase string) (account *Account, _ error) {
-	privkey, err := crypto.ToECDSA(common.CopyBytes(key))
+	privkey, err := crypto.ToECDSA(key)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +212,7 @@ func (ks *KeyStore) ImportECDSAKey(key []byte, passphrase string) (account *Acco
 // ImportPreSaleKey decrypts the given Ethereum presale wallet and stores
 // a key file in the key directory. The key file is encrypted with the same passphrase.
 func (ks *KeyStore) ImportPreSaleKey(keyJSON []byte, passphrase string) (ccount *Account, _ error) {
-	account, err := ks.keystore.ImportPreSaleKey(common.CopyBytes(keyJSON), passphrase)
+	account, err := ks.keystore.ImportPreSaleKey(keyJSON, passphrase)
 	if err != nil {
 		return nil, err
 	}
