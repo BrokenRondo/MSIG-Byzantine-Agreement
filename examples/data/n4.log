@@ -1,0 +1,38 @@
+nohup: appending output to ‘nohup.out’
+WARN [01-16|05:52:56] No etherbase set and no accounts found as default 
+INFO [01-16|05:52:57] Starting peer-to-peer node               instance=Geth/v1.6.7-unstable-edb37e96/linux-amd64/go1.7.3
+INFO [01-16|05:52:57] Allocated cache and file handles         database=/home/walker088/NCCU/NCCU-BFT-for-Go-Ethereum/examples/data/node4/geth/chaindata cache=128 handles=1024
+WARN [01-16|05:52:57] Upgrading chain database to use sequential keys 
+INFO [01-16|05:52:57] Initialised chain configuration          config="{ChainID: 2234 Homestead: 1 DAO: <nil> DAOSupport: false EIP150: 2 EIP155: 3 EIP158: 3 Metropolis: <nil> Engine: ethash}"
+INFO [01-16|05:52:57] config bft is                            bft=true
+INFO [01-16|05:52:57] Database conversion successful 
+WARN [01-16|05:52:57] Upgrading db log bloom bins 
+INFO [01-16|05:52:57] Bloom-bin upgrade completed              elapsed=68.897µs
+INFO [01-16|05:52:57] Initialising Ethereum protocol           versions="[63 62]" network=2234
+INFO [01-16|05:52:57] Loaded most recent local header          number=0 hash=10fa08…84109d td=1048576
+INFO [01-16|05:52:57] Loaded most recent local full block      number=0 hash=10fa08…84109d td=1048576
+INFO [01-16|05:52:57] Loaded most recent local fast block      number=0 hash=10fa08…84109d td=1048576
+INFO [01-16|05:52:57] Allocated cache and file handles         database=/home/walker088/NCCU/NCCU-BFT-for-Go-Ethereum/examples/data/node4/geth/bftData   cache=128 handles=1024
+INFO [01-16|05:52:57] Starting P2P networking 
+INFO [01-16|05:52:57] RLPx listener up                         self="enode://d9d5b902798f5c42901f3fd993e58a9fb2ded12c3996e2a3849d4fdfcd0c3516aa806f56d93a759278d1c92e88b0daccffc69312581544c9f680a13a2e556a9e@[::]:30306?discport=0"
+INFO [01-16|05:52:57] IPC endpoint opened: /home/walker088/NCCU/NCCU-BFT-for-Go-Ethereum/examples/data/node4/geth.ipc 
+INFO [01-16|05:52:57] HTTP endpoint opened: http://127.0.0.1:8548 
+INFO [01-16|05:52:57] send Ready msg 
+INFO [01-16|05:52:57] send Ready msg 
+INFO [01-16|05:52:57] send Ready msg 
+INFO [01-16|05:52:57] send Ready msg 
+INFO [01-16|05:52:57] send Ready msg 
+INFO [01-16|05:52:57] send Ready msg 
+INFO [01-16|05:52:57] send Ready msg 
+INFO [01-16|05:52:57] send Ready msg 
+INFO [01-16|05:52:57] send Ready msg 
+INFO [01-16|05:52:57] send Ready msg 
+INFO [01-16|05:52:57] send Ready msg 
+INFO [01-16|05:52:57] send Ready msg 
+INFO [01-16|05:52:57] send Ready msg 
+INFO [01-16|05:52:57] send Ready msg 
+INFO [01-16|05:52:57] send Ready msg 
+INFO [01-16|05:52:57] send Ready msg 
+INFO [01-16|05:52:57] send Ready msg 
+INFO [01-16|05:52:57] send Ready msg 
+Terminated

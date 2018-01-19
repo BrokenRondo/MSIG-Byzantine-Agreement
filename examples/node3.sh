@@ -13,4 +13,5 @@
 --bft \
 --allow-empty \
 --num-validators 4 \
---node-num 2
+--node-num 2 \
+--preload static-nodes.json

@@ -32,16 +32,16 @@ func (p *peer) SendPrecommitVote(v *types.PrecommitVote) error {
 	p.precommitFilter.Add(v.Hash())
 	return p2p.Send(p.rw, PrecommitVoteMsg, &precommitVoteData{PrecommitVote: v})
 }
-func (p *peer) SendPrecommitLocksets(pls []*types.PrecommitLockSet) error {
-	log.Debug(" Sending  Precommit Lockset", len(pls))
-	for _, ls := range pls {
+func (p *peer) SendLocksets(Ls []*types.LockSet) error {
+	log.Debug(" Sending Lockset", len(Ls))
+	for _, ls := range Ls {
 		p.broadcastFilter.Add(ls.Hash())
 	}
-	return p2p.Send(p.rw, PrecommitLocksetMsg, pls)
+	return p2p.Send(p.rw, LocksetMsg, Ls)
 }
 
-func (p *peer) RequestPrecommitLocksets(blocknumbers []RequestNumber) error {
-	return p2p.Send(p.rw, GetPrecommitLocksetsMsg, blocknumbers)
+func (p *peer) RequestLocksets(blocknumbers []RequestNumber) error {
+	return p2p.Send(p.rw, GetLocksetsMsg, blocknumbers)
 }
 
 // func (p *peer) SendBlockProposals(bps []*types.BlockProposal) error {

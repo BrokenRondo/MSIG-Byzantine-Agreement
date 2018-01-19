@@ -16,8 +16,8 @@ const (
 	// Protocol messages belonging to bft
 	StatusMsg               = 0x01
 	ReadyMsg                = 0x08
-	GetPrecommitLocksetsMsg = 0x09
-	PrecommitLocksetMsg     = 0x0a
+	GetLocksetsMsg          = 0x09
+	LocksetMsg     = 0x0a
 	NewBlockProposalMsg     = 0x0b
 	VotingInstructionMsg    = 0x0c
 	VoteMsg                 = 0x11

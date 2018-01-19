@@ -63,19 +63,19 @@ func (self *Synchronizer) request(height uint64) bool {
 	// 	log.Debug("request end", "err", err)
 	// } else {
 	peer := self.cm.pm.peers.BestPeer()
-	peer.RequestPrecommitLocksets(blockNumbers)
+	peer.RequestLocksets(blockNumbers)
 	self.Requested.Add(height)
 	log.Debug("no active protocol")
 	// }
 	return true
 }
-func (self *Synchronizer) receivePrecommitLocksets(pls []*types.PrecommitLockSet) {
-	for _, ls := range pls {
+func (self *Synchronizer) receiveLocksets(Ls []*types.LockSet) {
+	for _, ls := range Ls {
 		if result, hash := ls.HasQuorum(); result == true {
 			self.Requested.Remove(ls.Height())
-			self.cm.storePrecommitLockset(hash, ls)
+			self.cm.storeLockset(hash, ls)
 		} else {
-			log.Error("receive PrecommitLocksets invalid")
+			log.Error("receive Locksets invalid")
 			return
 		}
 	}

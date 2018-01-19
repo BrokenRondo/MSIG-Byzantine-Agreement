@@ -216,32 +216,32 @@ func (pm *ProtocolManager) handleBFTMsg(p *peer) error {
 	case msg.Code == StatusMsg:
 		// Status messages should never arrive after the handshake
 		return errResp(ErrExtraStatusMsg, "uncontrolled status message")
-	case msg.Code == GetPrecommitLocksetsMsg:
+	case msg.Code == GetLocksetsMsg:
 		log.Debug("GetBlockProposalsMsg from:", p.id)
 		var query []RequestNumber
 		if err := msg.Decode(&query); err != nil {
 			return errResp(ErrDecode, "%v: %v", msg, err)
 		}
-		var found []*btypes.PrecommitLockSet
-		log.Debug("GetPrecommitLockSetsMsg request: ", query)
+		var found []*btypes.LockSet
+		log.Debug("GetLockSetsMsg request: ", query)
 		for _, height := range query {
 			if height.Number > pm.blockchain.CurrentBlock().NumberU64() {
 				log.Info("Request future block")
 				break
 			}
-			ls := pm.consensusManager.getPrecommitLocksetByHeight(height.Number)
+			ls := pm.consensusManager.getLocksetByHeight(height.Number)
 			found = append(found, ls)
 		}
 		if len(found) != 0 {
-			p.SendPrecommitLocksets(found)
+			p.SendLocksets(found)
 		}
 
-	case msg.Code == PrecommitLocksetMsg:
-		var pls []*btypes.PrecommitLockSet
-		if err := msg.Decode(&pls); err != nil {
+	case msg.Code == LocksetMsg:
+		var ls []*btypes.LockSet
+		if err := msg.Decode(&ls); err != nil {
 			return errResp(ErrDecode, "%v: %v", msg, err)
 		}
-		pm.consensusManager.synchronizer.receivePrecommitLocksets(pls)
+		pm.consensusManager.synchronizer.receiveLocksets(ls)
 
 	case msg.Code == NewBlockProposalMsg:
 		var bpData newBlockProposals
@@ -283,7 +283,7 @@ func (pm *ProtocolManager) handleBFTMsg(p *peer) error {
 		if isValid := pm.consensusManager.AddVote(vote, p); isValid {
 			pm.BroadcastBFTMsg(vote)
 		}
-	case msg.Code == PrecommitVoteMsg:
+/*	case msg.Code == PrecommitVoteMsg:
 		var vData precommitVoteData
 		if err := msg.Decode(&vData); err != nil {
 			return errResp(ErrDecode, "%v: %v", msg, err)
@@ -297,6 +297,7 @@ func (pm *ProtocolManager) handleBFTMsg(p *peer) error {
 		if isValid := pm.consensusManager.AddPrecommitVote(vote, p); isValid {
 			pm.BroadcastBFTMsg(vote)
 		}
+*/
 	case msg.Code == ReadyMsg:
 		var r readyData
 		if err := msg.Decode(&r); err != nil {

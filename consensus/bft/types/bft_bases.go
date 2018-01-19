@@ -1020,10 +1020,10 @@ type BlockProposal struct {
 	Round          uint64
 	Block          *types.Block
 	RoundLockset   *LockSet
-	SigningLockset *PrecommitLockSet
+	SigningLockset *LockSet
 }
 
-func NewBlockProposal(height uint64, round uint64, block *types.Block, signingLockset *PrecommitLockSet, roundLockset *LockSet) (*BlockProposal, error) {
+func NewBlockProposal(height uint64, round uint64, block *types.Block, signingLockset *LockSet, roundLockset *LockSet) (*BlockProposal, error) {
 
 	if round > 0 && roundLockset == nil {
 		return nil, errors.New("R>0 needs a round lockset")
@@ -1143,7 +1143,7 @@ func (bp *BlockProposal) ValidateVotes(validators_H []common.Address, validators
 	if bp.RoundLockset != nil && bp.RoundLockset.EligibleVotesNum != 0 {
 		return checkVotes(bp.RoundLockset, validators_H)
 	}
-	return checkPrecommitVotes(bp.SigningLockset, validators_prevH)
+	return checkVotes(bp.SigningLockset, validators_H)
 
 }
 
