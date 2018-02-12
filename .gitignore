@@ -30,3 +30,7 @@ build/_vendor/pkg
 # travis
 profile.tmp
 profile.cov
+
+# msig
+examples/data/
+examples/log
