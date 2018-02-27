@@ -1010,12 +1010,18 @@ type Proposal interface {
 	GetRound() uint64
 	Blockhash() common.Hash
 	LockSet() *LockSet
+
+	//msig
+	Msig(prv *ecdsa.PrivateKey, addr common.Address) error
+	MsigFinished(msigProposers []common.Address) bool
 }
 type BlockProposal struct {
 	// signed signed
 	sender         *common.Address
 	V              *big.Int // signature
 	R, S           *big.Int // signature
+	msigV          map[common.Address]*big.Int // msig
+	msigR, msigS   map[common.Address]*big.Int // msig
 	Height         uint64
 	Round          uint64
 	Block          *types.Block
@@ -1034,12 +1040,16 @@ func NewBlockProposal(height uint64, round uint64, block *types.Block, signingLo
 	bp := &BlockProposal{
 		R:              new(big.Int),
 		S:              new(big.Int),
+		msigR:			map[common.Address]*big.Int{},
+		msigS:			map[common.Address]*big.Int{},
+		msigV:			map[common.Address]*big.Int{},
 		Height:         height,
 		Round:          round,
 		Block:          block,
 		SigningLockset: signingLockset,
 		RoundLockset:   roundLockset,
 	}
+
 	if height != block.NumberU64() {
 		return nil, errors.New("lockset.height / block.number mismatch")
 	}
@@ -1135,6 +1145,38 @@ func (bp *BlockProposal) Sign(prv *ecdsa.PrivateKey) error {
 	return nil
 }
 
+func (bp *BlockProposal) Msig(prv *ecdsa.PrivateKey, addr common.Address) error{
+	if bp.msigV[addr] != nil {
+		return errors.New("already sign")
+	}
+	_, err := bp.mSignECDSA(prv, bp.SigHash(), addr)
+	if err != nil {
+		return err
+	}
+	if _, err := bp.From(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (bp *BlockProposal) MsigFinished(msigProposers []common.Address) bool {
+	if len(bp.msigV)!=len(msigProposers) {
+		log.Info("there's no enough sig in the msigV", "len(sigV)", len(bp.msigV), "len(msigProposers)", len(msigProposers))
+		return false
+	}
+	for _, addr := range msigProposers {
+		if _, ok := bp.msigV[addr]; !ok {
+			log.Info("The msigV doesn't have this msigProposer:", addr)
+			return false
+		}
+		if bp.msigV[addr] == nil {
+			log.Info("The msigProposer", addr, "sig equals to nil")
+			return false
+		}
+	}
+	return true
+}
+
 func (bp *BlockProposal) ValidateVotes(validators_H []common.Address, validators_prevH []common.Address) error {
 	if _, err := bp.From(); err != nil {
 		return err
@@ -1208,6 +1250,30 @@ func (bp *BlockProposal) WithSignature(sig []byte) (*BlockProposal, error) {
 	return bp, nil
 }
 
+// msig sign
+func (bp *BlockProposal) mWithSignature(sig []byte, addr common.Address) (*BlockProposal, error) {
+	if len(sig) != 65 {
+		panic(fmt.Sprintf("wrong size for multi-signature: got %d, want 65", len(sig)))
+	}
+	if bp.msigR == nil {
+		log.Info("bp.msigR is nil")
+		bp.msigR = make(map[common.Address]*big.Int)
+	}
+	if bp.msigS == nil {
+		log.Info("bp.msigS is nil")
+		bp.msigS = make(map[common.Address]*big.Int)
+	}
+	if bp.msigV == nil {
+		log.Info("bp.msigV is nil")
+		bp.msigV = make(map[common.Address]*big.Int)
+	}
+
+	bp.msigR[addr] = new(big.Int).SetBytes(sig[:32])
+	bp.msigS[addr] = new(big.Int).SetBytes(sig[32:64])
+	bp.msigV[addr] = new(big.Int).SetBytes([]byte{sig[64] + 27})
+	return bp, nil
+}
+
 // Sign this with a privacy key
 func (bp *BlockProposal) SignECDSA(prv *ecdsa.PrivateKey, hash common.Hash) (*BlockProposal, error) {
 	sig, err := crypto.Sign(hash[:], prv)
@@ -1217,11 +1283,21 @@ func (bp *BlockProposal) SignECDSA(prv *ecdsa.PrivateKey, hash common.Hash) (*Bl
 	return bp.WithSignature(sig)
 }
 
+func (bp *BlockProposal) mSignECDSA(prv *ecdsa.PrivateKey, hash common.Hash, addr common.Address) (*BlockProposal, error) {
+	sig, err := crypto.Sign(hash[:], prv)
+	if err != nil {
+		return nil, err
+	}
+	return bp.mWithSignature(sig, addr)
+}
+
 type VotingInstruction struct {
 	// signed signed
 	sender       *common.Address
 	V            *big.Int // signature
 	R, S         *big.Int // signature
+	msigV        map[common.Address]*big.Int //msig
+	msigR, msigS map[common.Address]*big.Int //msig
 	Height       uint64
 	Round        uint64
 	RoundLockset *LockSet
@@ -1246,6 +1322,9 @@ func NewVotingInstruction(height uint64, round uint64, roundLockset *LockSet) (*
 	return &VotingInstruction{
 		R:            new(big.Int),
 		S:            new(big.Int),
+		msigR:		  map[common.Address]*big.Int{},
+		msigS:		  map[common.Address]*big.Int{},
+		msigV:		  map[common.Address]*big.Int{},
 		Height:       height,
 		Round:        round,
 		RoundLockset: roundLockset,
@@ -1317,6 +1396,39 @@ func (vi *VotingInstruction) Sign(prv *ecdsa.PrivateKey) error {
 	}
 	return nil
 }
+
+func (vi *VotingInstruction) Msig(prv *ecdsa.PrivateKey, addr common.Address) error{
+	if vi.msigV[addr] != nil {
+		return errors.New("already sign")
+	}
+	_, err := vi.mSignECDSA(prv, vi.SigHash(), addr)
+	if err != nil {
+		return err
+	}
+	if _, err := vi.From(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (vi *VotingInstruction) MsigFinished(msigProposers []common.Address) bool {
+	if len(vi.msigV)!=len(msigProposers) {
+		log.Info("there's no enough sig in the msigV")
+		return false
+	}
+	for _, addr := range msigProposers {
+		if _, ok := vi.msigV[addr]; !ok {
+			log.Info("The msigV doesn't have this msigProposer:", addr)
+			return false
+		}
+		if vi.msigV[addr] == nil {
+			log.Info("The msigProposer", addr, "sig equals to nil")
+			return false
+		}
+	}
+	return true
+}
+
 func (vi *VotingInstruction) recoverSender(hash common.Hash) (common.Address, error) {
 
 	pubkey, err := vi.publicKey(hash)
@@ -1367,6 +1479,29 @@ func (vi *VotingInstruction) WithSignature(sig []byte) (*VotingInstruction, erro
 	vi.V = new(big.Int).SetBytes([]byte{sig[64] + 27})
 	return vi, nil
 }
+// msig sign
+func (vi *VotingInstruction) mWithSignature(sig []byte, addr common.Address) (*VotingInstruction, error) {
+	if len(sig) != 65 {
+		panic(fmt.Sprintf("wrong size for multi-signature: got %d, want 65", len(sig)))
+	}
+	if vi.msigR == nil {
+		log.Info("bp.msigR is nil")
+		vi.msigR = make(map[common.Address]*big.Int)
+	}
+	if vi.msigS == nil {
+		log.Info("bp.msigS is nil")
+		vi.msigS = make(map[common.Address]*big.Int)
+	}
+	if vi.msigV == nil {
+		log.Info("bp.msigV is nil")
+		vi.msigV = make(map[common.Address]*big.Int)
+	}
+
+	vi.msigR[addr] = new(big.Int).SetBytes(sig[:32])
+	vi.msigS[addr] = new(big.Int).SetBytes(sig[32:64])
+	vi.msigV[addr] = new(big.Int).SetBytes([]byte{sig[64] + 27})
+	return vi, nil
+}
 
 // Sign this with a privacy key
 func (vi *VotingInstruction) SignECDSA(prv *ecdsa.PrivateKey, hash common.Hash) (*VotingInstruction, error) {
@@ -1376,3 +1511,12 @@ func (vi *VotingInstruction) SignECDSA(prv *ecdsa.PrivateKey, hash common.Hash) 
 	}
 	return vi.WithSignature(sig)
 }
+
+func (vi *VotingInstruction) mSignECDSA(prv *ecdsa.PrivateKey, hash common.Hash, addr common.Address) (*VotingInstruction, error) {
+	sig, err := crypto.Sign(hash[:], prv)
+	if err != nil {
+		return nil, err
+	}
+	return vi.mWithSignature(sig, addr)
+}
+

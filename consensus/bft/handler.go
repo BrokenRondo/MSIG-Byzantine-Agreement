@@ -147,7 +147,7 @@ func (pm *ProtocolManager) removePeer(id string) {
 	if peer == nil {
 		return
 	}
-	log.Debug("Removing Ethereum peer", "peer", id)
+	log.Info("Removing Ethereum peer", "peer", id)
 
 	// Unregister the peer from the downloader and Ethereum peer set
 	if err := pm.peers.Unregister(id); err != nil {
@@ -191,12 +191,12 @@ func (pm *ProtocolManager) announce() {
 		if pm.consensusManager.synchronizer.Requested.Size() != 0 {
 			time.Sleep(5 * time.Second)
 		}
-		log.Debug("consensusManager not ready ")
+		log.Info("consensusManager not ready ")
 		pm.consensusManager.SendReady(false)
 		time.Sleep(0.5 * 1000 * 1000 * 1000)
 	}
 	pm.consensusManager.SendReady(true)
-	log.Debug("-----------------consensusManager Ready-------------------------")
+	log.Info("-----------------consensusManager Ready-------------------------")
 }
 
 func (pm *ProtocolManager) handleBFTMsg(p *peer) error {
@@ -217,13 +217,13 @@ func (pm *ProtocolManager) handleBFTMsg(p *peer) error {
 		// Status messages should never arrive after the handshake
 		return errResp(ErrExtraStatusMsg, "uncontrolled status message")
 	case msg.Code == GetLocksetsMsg:
-		log.Debug("GetBlockProposalsMsg from:", p.id)
+		log.Info("GetBlockProposalsMsg from:", p.id)
 		var query []RequestNumber
 		if err := msg.Decode(&query); err != nil {
 			return errResp(ErrDecode, "%v: %v", msg, err)
 		}
 		var found []*btypes.LockSet
-		log.Debug("GetLockSetsMsg request: ", query)
+		log.Info("GetLockSetsMsg request: ", query)
 		for _, height := range query {
 			if height.Number > pm.blockchain.CurrentBlock().NumberU64() {
 				log.Info("Request future block")
@@ -279,7 +279,7 @@ func (pm *ProtocolManager) handleBFTMsg(p *peer) error {
 		if p.broadcastFilter.Has(vote.Hash()) {
 			return nil
 		}
-		// log.Debug("receive vote with HR ", vote.Height, vote.Round)
+		// log.Info("receive vote with HR ", vote.Height, vote.Round)
 		if isValid := pm.consensusManager.AddVote(vote, p); isValid {
 			pm.BroadcastBFTMsg(vote)
 		}
@@ -293,7 +293,7 @@ func (pm *ProtocolManager) handleBFTMsg(p *peer) error {
 		if p.broadcastFilter.Has(vote.Hash()) {
 			return nil
 		}
-		// log.Debug("receive precommit vote with HR ", vote.Height, vote.Round)
+		// log.Info("receive precommit vote with HR ", vote.Height, vote.Round)
 		if isValid := pm.consensusManager.AddPrecommitVote(vote, p); isValid {
 			pm.BroadcastBFTMsg(vote)
 		}
@@ -301,7 +301,7 @@ func (pm *ProtocolManager) handleBFTMsg(p *peer) error {
 	case msg.Code == ReadyMsg:
 		var r readyData
 		if err := msg.Decode(&r); err != nil {
-			log.Debug("err: ", err)
+			log.Info("err: ", err)
 			return errResp(ErrDecode, "%v: %v", msg, err)
 		}
 		ready := r.Ready
@@ -319,12 +319,12 @@ func (pm *ProtocolManager) BroadcastBFTMsg(msg interface{}) {
 	switch m := msg.(type) {
 	case *btypes.Ready:
 		peers := pm.peers.PeersWithoutHash(m.Hash())
-		// log.Debug("There are ", "peer count", len(peers))
+		// log.Info("There are ", "peer count", len(peers))
 		for _, peer := range peers {
 			log.Info("send Ready msg")
 			err = peer.SendReadyMsg(m)
 			if err != nil {
-				log.Debug("err: ", err)
+				log.Info("err: ", err)
 			}
 		}
 	case *btypes.BlockProposal:
@@ -346,11 +346,11 @@ func (pm *ProtocolManager) BroadcastBFTMsg(msg interface{}) {
 		}
 	case *btypes.PrecommitVote:
 		peers := pm.peers.PeersWithoutPrecommit(m.Hash())
-		// log.Debug("peers to broadcast: ", len(peers))
+		// log.Info("peers to broadcast: ", len(peers))
 		for _, peer := range peers {
 			err := peer.SendPrecommitVote(m)
 			if err != nil {
-				log.Debug("err: ", err)
+				log.Info("err: ", err)
 			}
 		}
 	default:
@@ -362,18 +362,18 @@ func (pm *ProtocolManager) BroadcastTwoBlockProposal(bp1 *btypes.BlockProposal, 
 	var err error
 
 	peers := pm.peers.PeersWithoutPrecommit(bp1.Hash())
-	// log.Debug("There are ", "peer count", len(peers))
+	// log.Info("There are ", "peer count", len(peers))
 	for i := 0; i < len(peers); i++ {
 		peer := peers[i]
 		if i < len(peers)/2 {
 			err = peer.SendNewBlockProposal(bp1)
 			if err != nil {
-				log.Debug("err: ", err)
+				log.Info("err: ", err)
 			}
 		} else {
 			err = peer.SendNewBlockProposal(bp2)
 			if err != nil {
-				log.Debug("err: ", err)
+				log.Info("err: ", err)
 			}
 		}
 	}
@@ -384,11 +384,11 @@ func (self *ProtocolManager) linkBlock(block *types.Block) *types.Block {
 	defer self.addTransactionLock.Unlock()
 	// _link_block
 	if self.blockchain.HasBlock(block.Hash()) {
-		log.Debug("KNOWN BLOCK")
+		log.Info("KNOWN BLOCK")
 		return nil
 	}
 	if !self.blockchain.HasBlock(block.ParentHash()) {
-		log.Debug("missing parent")
+		log.Info("missing parent")
 		return nil
 	}
 

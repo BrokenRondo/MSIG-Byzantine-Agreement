@@ -33,7 +33,7 @@ func (p *peer) SendPrecommitVote(v *types.PrecommitVote) error {
 	return p2p.Send(p.rw, PrecommitVoteMsg, &precommitVoteData{PrecommitVote: v})
 }
 func (p *peer) SendLocksets(Ls []*types.LockSet) error {
-	log.Debug(" Sending Lockset", len(Ls))
+	log.Info(" Sending Lockset", len(Ls))
 	for _, ls := range Ls {
 		p.broadcastFilter.Add(ls.Hash())
 	}
@@ -45,7 +45,7 @@ func (p *peer) RequestLocksets(blocknumbers []RequestNumber) error {
 }
 
 // func (p *peer) SendBlockProposals(bps []*types.BlockProposal) error {
-// 	log.Debug(" Sending  proposals", len(bps))
+// 	log.Info(" Sending  proposals", len(bps))
 // 	for _, bp := range bps {
 // 		p.broadcastFilter.Add(bp.Hash())
 // 	}

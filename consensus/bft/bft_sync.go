@@ -35,12 +35,12 @@ func NewSynchronizer(cm *ConsensusManager) *Synchronizer {
 // 	ls := self.cm.lastCommittingLockset().Copy()
 // 	self.cm.getHeightMu.Unlock()
 // 	if ls == nil {
-// 		log.Debug("no highest comitting lockest")
+// 		log.Info("no highest comitting lockest")
 // 		return []types.RequestProposalNumber{}
 // 	}
 // 	maxHeight := ls.Height()
 // 	current := self.cm.Head().Number()
-// 	log.Debug("max height: %d current: %d\n", maxHeight, current)
+// 	log.Info("max height: %d current: %d\n", maxHeight, current)
 
 // 	if maxHeight < current.Uint64() {
 // 		return []types.RequestProposalNumber{}
@@ -60,12 +60,12 @@ func (self *Synchronizer) request(height uint64) bool {
 
 	// if self.lastActiveProtocol != nil {
 	// 	err := self.lastActiveProtocol.RequestPrecommitLocksets(blockNumbers)
-	// 	log.Debug("request end", "err", err)
+	// 	log.Info("request end", "err", err)
 	// } else {
 	peer := self.cm.pm.peers.BestPeer()
 	peer.RequestLocksets(blockNumbers)
 	self.Requested.Add(height)
-	log.Debug("no active protocol")
+	log.Info("no active protocol")
 	// }
 	return true
 }
@@ -101,7 +101,7 @@ func (self *Synchronizer) receiveLocksets(Ls []*types.LockSet) {
 // }
 
 func (self *Synchronizer) onProposal(proposal types.Proposal, p *peer) {
-	log.Debug("synchronizer on proposal")
+	log.Info("synchronizer on proposal")
 	if proposal.GetHeight() >= self.cm.Height() {
 		if !proposal.LockSet().IsValid() && proposal.LockSet().EligibleVotesNum != 0 {
 			panic("onProposal error")

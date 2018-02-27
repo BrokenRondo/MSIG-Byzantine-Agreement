@@ -34,3 +34,4 @@ profile.cov
 # msig
 examples/data/
 examples/log
+*.swap
