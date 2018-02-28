@@ -13,7 +13,3 @@ cp ./static-nodes.json ./data/node4
 # start the nodes1 to node4 and connect each others 
 ./start.sh
 
-../build/bin/geth --exec 'admin.peers' attach ipc:./data/node1/geth.ipc
-../build/bin/geth --exec 'admin.peers' attach ipc:./data/node2/geth.ipc
-../build/bin/geth --exec 'admin.peers' attach ipc:./data/node3/geth.ipc
-../build/bin/geth --exec 'admin.peers' attach ipc:./data/node4/geth.ipc
