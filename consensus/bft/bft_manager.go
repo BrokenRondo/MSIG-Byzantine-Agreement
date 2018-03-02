@@ -1245,7 +1245,7 @@ func (rm *RoundManager) vote() *btypes.Vote {
 	lastVoteLock := rm.hm.LastVoteLock()
 
 	var vote *btypes.Vote
-	if lastVoteLock != nil && lastVoteLock.VoteType == 1 && rm.proposal == nil {
+	if lastVoteLock != nil && lastVoteLock.VoteType == 1 {
 		// vote previous Vote.
 		log.Info("vote previous vote")
 		vote = btypes.NewVote(rm.height, rm.round, lastVoteLock.Blockhash, 1)

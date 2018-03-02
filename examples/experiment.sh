@@ -15,10 +15,14 @@
 # start the nodes1 to node4 and connect each others 
 #./start.sh
 
-../build/bin/geth --exec 'admin.peers' attach ipc:./data/node1/geth.ipc
-../build/bin/geth --exec 'admin.peers' attach ipc:./data/node2/geth.ipc
-../build/bin/geth --exec 'admin.peers' attach ipc:./data/node3/geth.ipc
-../build/bin/geth --exec 'admin.peers' attach ipc:./data/node4/geth.ipc
+#../build/bin/geth --exec 'admin.peers' attach ipc:./data/node1/geth.ipc
+#../build/bin/geth --exec 'admin.peers' attach ipc:./data/node2/geth.ipc
+#../build/bin/geth --exec 'admin.peers' attach ipc:./data/node3/geth.ipc
+#../build/bin/geth --exec 'admin.peers' attach ipc:./data/node4/geth.ipc
+#../build/bin/geth --exec 'admin.peers' attach ipc:./data/node5/geth.ipc
+#../build/bin/geth --exec 'admin.peers' attach ipc:./data/node6/geth.ipc
+#../build/bin/geth --exec 'admin.peers' attach ipc:./data/node7/geth.ipc
+#../build/bin/geth --exec 'admin.peers' attach ipc:./data/node8/geth.ipc
 
 # start adding txs into txpool
 echo "==================start to send the txs from client===================="
@@ -35,6 +39,6 @@ echo "sending tx from client cost: $(($endCli-$start)) ms"
 
 # start to exec the consensus mechanism
 echo "==================start to exec the consensus mechanism=================="
-./run-miner.sh
+#./run-miner.sh
 end=$(($(date +%s%N)/1000000))
 echo "exec txs in geth cost: $(($end-$endCli)) ms"

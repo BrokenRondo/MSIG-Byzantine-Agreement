@@ -1,9 +1,9 @@
 ../build/bin/geth \
 \
 --networkid 2234 \
---port 30308 \
---rpcport 8549 \
---datadir "data/nodec" \
+--port 30309 \
+--rpcport 8551 \
+--datadir "data/node7" \
 --nodiscover \
 \
 --rpc \
@@ -11,5 +11,6 @@
 --rpcapi "eth,net,debug" \
 \
 --bft \
---num-validators 4 \
---node-num 4
+--allow-empty \
+--num-validators 8 \
+--node-num 6
