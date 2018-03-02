@@ -42,3 +42,5 @@ echo "==================start to exec the consensus mechanism=================="
 #./run-miner.sh
 end=$(($(date +%s%N)/1000000))
 echo "exec txs in geth cost: $(($end-$endCli)) ms"
+
+rm node*.sh

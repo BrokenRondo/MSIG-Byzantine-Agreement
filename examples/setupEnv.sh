@@ -24,4 +24,3 @@ cp ./static-nodes.json ./data/node8
 rm node*.sh
 cp nodeCofig/8nodes/*.sh ./
 ./start.sh
-rm node*.sh
